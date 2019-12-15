@@ -1,10 +1,20 @@
 import React from 'react';
-import { getSpriteBoundingBoxes } from '../utils/image';
+import { ControlsState, ViewType } from './Controls';
+import {
+  getSpriteBoundingBoxes,
+  BoundingBox,
+  getGridBoundingBoxes,
+  getImageData,
+  getBoundingBoxes
+} from '../utils/image';
 
 const defaultCanvasSize = { height: 200, width: 400 };
 
 interface SpritesheetProps {
   img: HTMLImageElement | null;
+  controlsState: ControlsState;
+  onSpriteClicked: (spriteIdx: number) => void;
+  selectedSprites: Array<number>;
 }
 
 class Spritesheet extends React.Component<SpritesheetProps> {
@@ -20,24 +30,48 @@ class Spritesheet extends React.Component<SpritesheetProps> {
 
   updateCanvas = () => {
     const canvas = this.canvasRef.current!;
-    const { height, width } = canvas;
-    const { img } = this.props;
-
-    if (!img) return;
-
+    const { width, height } = canvas;
     const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(img, 0, 0);
-    const imgData = ctx.getImageData(0, 0, width, height);
+    const { img } = this.props;
+    if (!img) return;
+    const imgData = getImageData(img, width, height);
 
-    const boundingBoxes = getSpriteBoundingBoxes(imgData, {});
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0);
+
+    const boundingBoxes = getBoundingBoxes(imgData, this.props.controlsState);
     this.drawBoundingBoxes(boundingBoxes, ctx);
   };
 
-  drawBoundingBoxes = (boundingBoxes: any, ctx: CanvasRenderingContext2D) => {
-    ctx.strokeStyle = '#ff0000';
-    boundingBoxes.forEach((bb: any) => {
-      ctx.strokeRect(bb.minX, bb.minY, bb.maxX - bb.minX, bb.maxY - bb.minY);
+  drawBoundingBoxes = (boundingBoxes: Array<BoundingBox>, ctx: CanvasRenderingContext2D) => {
+    const { selectedSprites } = this.props;
+    ctx.strokeStyle = 'rgba(255,0,0,0.5)';
+    ctx.fillStyle = 'rgba(0,0, 130, 0.3)';
+    boundingBoxes.forEach((bb: BoundingBox, idx: number) => {
+      if (selectedSprites.includes(idx)) {
+        ctx.fillRect(bb.x, bb.y, bb.width, bb.height);
+      }
+      ctx.strokeRect(bb.x, bb.y, bb.width, bb.height);
     });
+  };
+
+  onCanvasClick = (e: React.MouseEvent) => {
+    const { img, controlsState } = this.props;
+    if (!img) return;
+    const canvas = e.target as HTMLCanvasElement;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const imgData = getImageData(img, rect.width, rect.height);
+    const boundingBoxes = getBoundingBoxes(imgData, controlsState);
+    const boundingBoxIdx = boundingBoxes.findIndex(bb => {
+      if (x < bb.x || y < bb.y || x > bb.x + bb.width || y > bb.y + bb.height) return false;
+      return true;
+    });
+
+    if (boundingBoxIdx !== -1) {
+      this.props.onSpriteClicked(boundingBoxIdx);
+    }
   };
 
   render() {
@@ -50,6 +84,7 @@ class Spritesheet extends React.Component<SpritesheetProps> {
           className="sprite-canvas"
           height={height}
           width={width}
+          onClick={this.onCanvasClick}
         ></canvas>
       </div>
     );

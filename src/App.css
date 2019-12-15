@@ -30,3 +30,41 @@ button.nice-button:hover {
   color: #000000;
   background-color: #ffffff;
 }
+
+.view-controls {
+  /* border: 1px solid white; */
+  display: flex;
+  flex-direction: column;
+  color: white;
+  margin-top: 1em;
+  padding: 1em;
+  font-size: 1.2em;
+}
+
+.view-group {
+  display: flex;
+  justify-content: center;
+  line-height: 1em;
+}
+
+.view-group label[for='grid'] {
+  margin-right: 2em;
+}
+.view-group input {
+  margin-right: 0.6em;
+}
+
+.secondary-controls-group {
+  margin-top: 1em;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+input[type='number'] {
+  width: 2.5em;
+  text-align: center;
+  font-size: 1em;
+}

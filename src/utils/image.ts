@@ -1,10 +1,47 @@
+import { ControlsState, ViewType } from '../components/Controls';
+
 type Opts = {
-  // add in background color
+  minPixels: number;
 };
+
+type ConnectedPixels = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  pixels: Array<object>;
+};
+
+export type BoundingBox = {
+  x: number;
+  y: number;
+  height: number;
+  width: number;
+};
+
+function getImageData(img: HTMLImageElement, width: number, height: number) {
+  const canvas = document.createElement('canvas');
+  canvas.height = height;
+  canvas.width = width;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(img, 0, 0);
+  return ctx.getImageData(0, 0, width, height);
+}
+
+function getBoundingBoxes(imgData: ImageData, controlsState: ControlsState) {
+  if (controlsState.selectedView === ViewType.GRID) {
+    const { gridWidth, gridHeight } = controlsState;
+    return getGridBoundingBoxes(gridWidth, gridHeight, imgData);
+  } else if (controlsState.selectedView === ViewType.BOUNDING) {
+    const { minBoundingPixels } = controlsState;
+    return getSpriteBoundingBoxes(imgData, { minPixels: minBoundingPixels });
+  }
+  return [];
+}
 
 function getSpriteBoundingBoxes(imgData: ImageData, opts: Opts) {
   const { height, width, data } = imgData;
-  console.log({ height, width, pixels: width * height });
+  const { minPixels } = opts;
   // List of known objects we have so far
   const sprites = [];
   const pixelMap = createAlphaMask(imgData);
@@ -35,24 +72,41 @@ function getSpriteBoundingBoxes(imgData: ImageData, opts: Opts) {
     };
 
     depthFirstFloodFill(x, y, spriteId, pixelMap, imgData, connectedPixels);
-    if (connectedPixels.pixels.length > 36) {
+    if (connectedPixels.pixels.length > minPixels) {
       spriteId += 1;
       sprites.push(connectedPixels);
     }
   }
 
-  console.log('Done');
-  console.log(sprites);
-  return sprites;
+  const boundingBoxes: Array<BoundingBox> = sprites.map(sprite => ({
+    x: sprite.minX,
+    y: sprite.minY,
+    width: sprite.maxX - sprite.minX,
+    height: sprite.maxY - sprite.minY
+  }));
+
+  return boundingBoxes;
 }
 
-type ConnectedPixels = {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-  pixels: Array<object>;
-};
+function getGridBoundingBoxes(gridWidth: number, gridHeight: number, imgData: ImageData) {
+  const { height, width } = imgData;
+  const horizontalBoxes = Math.floor(width / gridWidth);
+  const verticalBoxes = Math.floor(height / gridHeight);
+  const boundingBoxes: Array<BoundingBox> = [];
+
+  for (let y = 0; y < verticalBoxes; y++) {
+    for (let x = 0; x < horizontalBoxes; x++) {
+      boundingBoxes.push({
+        x: x * gridWidth,
+        y: y * gridHeight,
+        width: gridWidth,
+        height: gridHeight
+      });
+    }
+  }
+
+  return boundingBoxes;
+}
 
 function depthFirstFloodFill(
   xStart: number,
@@ -119,4 +173,4 @@ function createAlphaMask(imgData: ImageData): Array<number> {
   return alphaMask;
 }
 
-export { getSpriteBoundingBoxes };
+export { getSpriteBoundingBoxes, getGridBoundingBoxes, getImageData, getBoundingBoxes };
