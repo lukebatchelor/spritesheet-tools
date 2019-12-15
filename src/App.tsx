@@ -11,6 +11,24 @@ import { getImageData, getBoundingBoxes } from './utils/image';
 const urlParams = new URLSearchParams(window.location.search);
 const SKIP_UPLOAD_STEP = urlParams.has('debug');
 
+function getCalculatedCanvasSize(uploadedImg: HTMLImageElement) {
+  const { height, width } = uploadedImg;
+  const maxWidth = window.innerWidth * 0.6;
+  const maxHeight = window.innerWidth * 0.4;
+  if (height < maxHeight && width < maxWidth) {
+    return { canvasHeight: height, canvasWidth: width };
+  }
+
+  const xScaling = width > maxWidth ? maxWidth / width : 1;
+  const yScaling = height > maxHeight ? maxHeight / height : 1;
+  // We want to scale both dimensions evenly, so take the biggest scaling factor
+  const maxScaling = Math.min(xScaling, yScaling);
+  const newWidth = Math.round(width * maxScaling);
+  const newHeight = Math.round(height * maxScaling);
+
+  return { canvasWidth: newWidth, canvasHeight: newHeight };
+}
+
 enum ScreenName {
   UPLOAD = 'UPLOAD',
   SELECTING = 'SELECTING'
@@ -46,12 +64,12 @@ class App extends React.Component<{}, AppState> {
   }
 
   onSpriteUploaded = (uploadedImg: HTMLImageElement) => {
-    const { height, width } = uploadedImg;
+    const { canvasHeight, canvasWidth } = getCalculatedCanvasSize(uploadedImg);
     this.setState({
       curScreen: ScreenName.SELECTING,
       uploadedImg,
-      canvasWidth: width,
-      canvasHeight: height
+      canvasWidth,
+      canvasHeight
     });
   };
 
@@ -81,8 +99,8 @@ class App extends React.Component<{}, AppState> {
     const boundingBoxes = getBoundingBoxes(imgData, controlsState);
     const mainCanvas = document.createElement('canvas');
     const tmpCanvas = document.createElement('canvas');
-    mainCanvas.width = canvasWidth;
-    mainCanvas.height = canvasHeight;
+    mainCanvas.width = uploadedImg.width;
+    mainCanvas.height = uploadedImg.height;
     const mainCtx = mainCanvas.getContext('2d')!;
     const tmpCtx = tmpCanvas.getContext('2d')!;
     mainCtx.drawImage(uploadedImg, 0, 0);
@@ -123,13 +141,15 @@ class App extends React.Component<{}, AppState> {
   };
 
   render() {
-    const { uploadedImg, curScreen, controlsState } = this.state;
+    const { uploadedImg, curScreen, controlsState, canvasHeight, canvasWidth } = this.state;
     return (
       <div className="app">
         <h1 className="title">Spritesheet Tools</h1>
         {curScreen === ScreenName.SELECTING && (
           <Spritesheet
             img={uploadedImg}
+            canvasWidth={canvasWidth}
+            canvasHeight={canvasHeight}
             controlsState={controlsState}
             onSpriteClicked={this.onSpriteClicked}
             selectedSprites={this.state.selectedSprites}

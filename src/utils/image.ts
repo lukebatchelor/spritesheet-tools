@@ -21,11 +21,11 @@ export type BoundingBox = {
 
 function getImageData(img: HTMLImageElement, width: number, height: number) {
   const canvas = document.createElement('canvas');
-  canvas.height = height;
-  canvas.width = width;
+  canvas.height = img.height;
+  canvas.width = img.width;
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(img, 0, 0);
-  return ctx.getImageData(0, 0, width, height);
+  return ctx.getImageData(0, 0, img.width, img.height);
 }
 
 function getBoundingBoxes(imgData: ImageData, controlsState: ControlsState) {
